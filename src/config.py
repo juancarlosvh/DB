@@ -5,7 +5,7 @@ class Config():
         pass
 
     def readConfig(self):
-        jsondata = open('config.json')
+        jsondata = open('src/config.json')
         data = json.load(jsondata)
         return data['conn']
     

@@ -5,11 +5,11 @@ class DBConnect():
 	def __init__( self ):
 		pass
 
-	def connection(self,Host_Name,User_Name,Password,Database_Name):
+	def connectiondb(self,Host_Name,User_Name,Password,Database_Name):
 		try:
 			self.connection = mysql.connector.connect(host=Host_Name,user=User_Name,password=Password,database=Database_Name)
 			self.cursor = self.connection.cursor()
-			return self.cursor
+			return True
 		except mysql.connector.Error as e:
 			return e
 		
@@ -30,7 +30,7 @@ class DBConnect():
 	
 	def return_data(self,sql,database=''):
 		try:
-			self.connection()
+			self.connectiondb()
 
 			self.cursor.execute(sql)
 			data = self.cursor.fetchall()
