@@ -6,6 +6,7 @@ class DBConnect():
 		pass
 
 	def connectiondb(self,Host_Name,User_Name,Password,Database_Name):
+		print("inicia connectiondb")
 		try:
 			self.connection = mysql.connector.connect(host=Host_Name,user=User_Name,password=Password,database=Database_Name)
 			self.cursor = self.connection.cursor()
