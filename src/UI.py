@@ -12,10 +12,12 @@ class MetaDBManager(wx.Frame):
 	connected = None
 	#Variables
 	is_connected = False
+	database_old_selected = ''
+	List_tables = []
 
 	def __init__(self,parent):
 		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"MetaDBManager")
-		favicon = wx.Icon('src/img/wxdbmanager_32x32.png',wx.BITMAP_TYPE_PNG, 16,16)
+		favicon = wx.Icon('src/icons/wxdbmanager_32x32.png',wx.BITMAP_TYPE_PNG, 16,16)
 		self.SetIcon(favicon)
 		self.SetSize((620,530))
 		self.SetTitle("MetaDBManager")
@@ -30,7 +32,7 @@ class MetaDBManager(wx.Frame):
 
 	def BarraHerramientas(self):
 		self.ToolBar1 = self.CreateToolBar( wx.TB_HORIZONTAL, wx.ID_ANY )
-		self.Connection_tool = self.ToolBar1.AddTool( wx.ID_ANY, u"tool",wx.Bitmap( u"src/img/025-settings-1.png", wx.BITMAP_TYPE_ANY ), wx.NullBitmap, wx.ITEM_NORMAL, wx.EmptyString, wx.EmptyString, None )
+		self.Connection_tool = self.ToolBar1.AddTool( wx.ID_ANY, u"tool",wx.Bitmap( u"src/icons/025-settings-1.png", wx.BITMAP_TYPE_ANY ), wx.NullBitmap, wx.ITEM_NORMAL, wx.EmptyString, wx.EmptyString, None )
 
 		self.ToolBar1.Realize()
 
@@ -78,6 +80,7 @@ class MetaDBManager(wx.Frame):
 		data = self.connected.return_data("SHOW SCHEMAS","")
 		root = self.Arbol.AddRoot('Databases')
 		self.Arbol.Expand(root)
+		print(data)
 
 		#	def get_databases_list(self,tree,root):
 		self.items_database_list = {}
@@ -86,17 +89,77 @@ class MetaDBManager(wx.Frame):
 		img_database = image_list.Add(wx.Image("src/icons/database.png", wx.BITMAP_TYPE_PNG).Scale(16,16).ConvertToBitmap())
 		self.img_table    = image_list.Add(wx.Image("src/icons/table.png", wx.BITMAP_TYPE_PNG).Scale(16,16).ConvertToBitmap())
 
-		tree.AssignImageList(image_list)
+		self.Arbol.AssignImageList(image_list)
 
-		if self.is_connect == True:
-			rows = self.controller.get_databases()
+		if self.is_connected == True:
+			rows = data
 			for row in rows:
-				item = tree.AppendItem(root, row[0])
+				item = self.Arbol.AppendItem(root, row[0])
 				self.items_database_list[row[0]]=(item)
 				# Agregando imagen a los items				
-				tree.SetPyData(item, None)
-				tree.SetItemImage(item, img_database, wx.TreeItemIcon_Normal)
-				self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelChanged, tree)
+				self.Arbol.SetItemData(item, None)
+				self.Arbol.SetItemImage(item, img_database, wx.TreeItemIcon_Normal)
+				self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelChanged, self.Arbol)
+	
+	def OnSelChanged(self,event):
+		items =  event.GetItem()
+		db_nodo = self.Arbol.GetItemText(items)
+		self.item_selected = db_nodo
+
+		if db_nodo != 'Databases':
+			if self.check_is_database(items) == 1:
+				print(db_nodo)
+				self.database_active = db_nodo
+				if self.database_old_selected == '':
+					self.database_old_selected = db_nodo
+					self.object_item = self.items_database_list.get(db_nodo)
+				else:
+					self.database_old_selected = db_nodo
+					self.Arbol.DeleteChildren(self.object_item)
+					self.object_item = self.items_database_list.get(db_nodo)
+
+				if self.database_active != '':
+					self.add_tables_nodo(self.items_database_list.get(db_nodo), self.Arbol.GetItemText(items))
+				self.option_menu = ['New Table', 'Drop DB']
+			else:
+				self.table_active = db_nodo
+				self.option_menu = ['Select','Drop Table','Describe']
+		else:
+			self.option_menu = ['New DB', 'Refresh']
+
+		self.popupmenu = wx.Menu()
+		for text in self.option_menu:
+			item = self.popupmenu.Append(-1, text)
+			self.Bind(wx.EVT_MENU, self.OnPopupItemSelected, item)
+		self.Arbol.Bind(wx.EVT_CONTEXT_MENU, self.OnShowPopup)
+	
+	def check_is_database(self,db):
+		for value in self.items_database_list.values():
+			if value == db:
+				return 1
+	
+	def OnPopupItemSelected(self, event):
+		item = self.popupmenu.GetLabel(event.GetId())
+
+	def OnShowPopup(self, event):
+		pos = event.GetPosition()
+		pos = self.ScreenToClient(pos)
+		self.PopupMenu(self.popupmenu, pos)
+
+	def add_tables_nodo(self,root,db_name):
+		n = len(self.List_tables)
+		if n == 0:
+			pass
+		else:
+			self.List_tables = []
+
+		rows = self.controller.get_tables(self.database_active)
+		for row in rows:
+			w = self.tree.AppendItem(root,str(row[0]))
+			self.List_tables.append(row[0])
+
+			self.tree.SetPyData(w, None)
+			self.tree.SetItemImage(w, self.img_table, wx.TreeItemIcon_Normal)
 	#Funciones
 	def CheckConnection(self):
 		data = self.Config.readConfig()
