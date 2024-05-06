@@ -18,5 +18,5 @@ class Config():
         json_data = json.dumps(data_json)
         decoded = json.loads(json_data)
 
-        with open('config.json', 'w') as outfile:
+        with open('src/config.json', 'w') as outfile:
             json.dump(decoded, outfile)

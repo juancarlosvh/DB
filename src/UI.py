@@ -2,10 +2,16 @@ import wx
 import wx.aui
 
 from src.controller import Controller
+from src.config import Config
+from src.dbConnect import DBConnect
 
 class MetaDBManager(wx.Frame):
-	is_connected = False
+	#instancias
 	Controlador = Controller()
+	Config = Config()
+	connected = None
+	#Variables
+	is_connected = False
 
 	def __init__(self,parent):
 		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"MetaDBManager")
@@ -20,6 +26,7 @@ class MetaDBManager(wx.Frame):
 		self.Show()
 
 		self.CheckConnection()
+		self.ArbolLlenado()
 
 	def BarraHerramientas(self):
 		self.ToolBar1 = self.CreateToolBar( wx.TB_HORIZONTAL, wx.ID_ANY )
@@ -27,9 +34,8 @@ class MetaDBManager(wx.Frame):
 
 		self.ToolBar1.Realize()
 
-		self.Bind(wx.EVT_TOOL, self.conection_manager, self.Connection_tool)
+		self.Bind(wx.EVT_TOOL, self.ConnectionManager, self.Connection_tool)
 		
-
 	def UI(self):
 		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 
@@ -68,13 +74,135 @@ class MetaDBManager(wx.Frame):
 
 		self.SetSizer( VerticalSizerPrincipal )
 
+	def ArbolLlenado(self):
+		data = self.connected.return_data("SHOW SCHEMAS","")
+		root = self.Arbol.AddRoot('Databases')
+		self.Arbol.Expand(root)
+
+		#	def get_databases_list(self,tree,root):
+		self.items_database_list = {}
+
+		image_list = wx.ImageList(16, 16)
+		img_database = image_list.Add(wx.Image("src/icons/database.png", wx.BITMAP_TYPE_PNG).Scale(16,16).ConvertToBitmap())
+		self.img_table    = image_list.Add(wx.Image("src/icons/table.png", wx.BITMAP_TYPE_PNG).Scale(16,16).ConvertToBitmap())
+
+		tree.AssignImageList(image_list)
+
+		if self.is_connect == True:
+			rows = self.controller.get_databases()
+			for row in rows:
+				item = tree.AppendItem(root, row[0])
+				self.items_database_list[row[0]]=(item)
+				# Agregando imagen a los items				
+				tree.SetPyData(item, None)
+				tree.SetItemImage(item, img_database, wx.TreeItemIcon_Normal)
+				self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelChanged, tree)
 	#Funciones
-	def conection_manager(evt,self):
-		print("Connection")
-	
 	def CheckConnection(self):
-		m = self.Controlador.initConection()
-		wx.MessageBox(str(m), 'Info',wx.OK | wx.ICON_INFORMATION)
+		data = self.Config.readConfig()
+
+		self.connected = DBConnect(data[0],data[1],data[2],data[3])
+		if self.connected.connectiondb() == True:
+			self.is_connected = True
+		else:
+			wx.MessageBox(str(self.connected.connectiondb()), 'Info',wx.OK | wx.ICON_INFORMATION)
+			self.ConnectionManager()
+	
+	def ConnectionManager(self, evt=''):
+		NewBD = Dialog_Connection(self)
+		NewBD.ShowModal()
+		NewBD.Destroy()
+		self.CheckConnection()
+
+class Dialog_Connection ( wx.Dialog ):
+
+	controller = Controller()
+	config = Config()
+
+	def __init__( self, parent ):
+		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"Administrator", pos = wx.DefaultPosition, size = wx.Size( 300,220 ), style = wx.DEFAULT_DIALOG_STYLE )
+
+		datos = self.GetDataConfig()
+
+		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+
+		bSizer1 = wx.BoxSizer( wx.VERTICAL )
+
+		self.m_staticText1 = wx.StaticText( self, wx.ID_ANY, u"Conecction", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText1.Wrap( -1 )
+
+		self.m_staticText1.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False, wx.EmptyString ) )
+
+		bSizer1.Add( self.m_staticText1, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
+
+		gSizer1 = wx.GridSizer( 0, 2, 0, 0 )
+
+		self.m_staticText2 = wx.StaticText( self, wx.ID_ANY, u"HostName:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText2.Wrap( -1 )
+
+		gSizer1.Add( self.m_staticText2, 0, wx.ALL, 5 )
+
+		self.txtHostname = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer1.Add( self.txtHostname, 0, wx.ALL, 5 )
+		self.txtHostname.SetValue(datos[0])
+
+		self.m_staticText3 = wx.StaticText( self, wx.ID_ANY, u"UserName:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText3.Wrap( -1 )
+
+		gSizer1.Add( self.m_staticText3, 0, wx.ALL, 5 )
+
+		self.txtUsername = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer1.Add( self.txtUsername, 0, wx.ALL, 5 )
+		self.txtUsername.SetValue(datos[1])
+
+		self.m_staticText4 = wx.StaticText( self, wx.ID_ANY, u"Password:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText4.Wrap( -1 )
+
+		gSizer1.Add( self.m_staticText4, 0, wx.ALL, 5 )
+
+		self.txtPassword = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer1.Add( self.txtPassword, 0, wx.ALL, 5 )
+		self.txtPassword.SetValue(datos[2])
+
+		bSizer1.Add( gSizer1, 1, wx.EXPAND, 5 )
+
+		bSizer2 = wx.BoxSizer( wx.HORIZONTAL )
+
+		self.btnSave = wx.Button( self, wx.ID_ANY, u"Save", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer2.Add( self.btnSave, 0, wx.ALL, 5 )
+
+		self.btnTest = wx.Button( self, wx.ID_ANY, u"Test", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer2.Add( self.btnTest, 0, wx.ALL, 5 )
+
+
+		bSizer1.Add( bSizer2, 1, wx.ALL|wx.EXPAND, 5 )
+
+
+		self.SetSizer( bSizer1 )
+		self.Layout()
+
+		self.Centre( wx.BOTH )
+
+		self.Bind(wx.EVT_BUTTON, self.Save, self.btnSave)
+		self.Bind(wx.EVT_BUTTON, self.testingConnection, self.btnTest)
+
+	def GetDataConfig(self):
+		data = self.config.readConfig()
+		return data
+
+	def testingConnection(self,evt):
+		connected = DBConnect(self.txtHostname.GetValue(),self.txtUsername.GetValue(),self.txtPassword.GetValue(),"")
+		if connected.connectiondb() == True:
+			wx.MessageBox("Testing ok" , 'Info',wx.OK | wx.ICON_INFORMATION)
+		else:
+			wx.MessageBox(str(connected.connectiondb()), 'Info',wx.OK | wx.ICON_INFORMATION)
+		
+	def Save(self, evt):
+		try:
+			msg = self.config.writeConnection(self.txtHostname.GetValue(),self.txtUsername.GetValue(),self.txtPassword.GetValue(),"")
+			wx.MessageBox("Correcto" , 'Info',wx.OK | wx.ICON_INFORMATION)
+		except:
+			wx.MessageBox("Error" , 'Info',wx.OK | wx.ICON_INFORMATION)
 
 class about_panel( wx.Panel ):
 	#controller = Controller()

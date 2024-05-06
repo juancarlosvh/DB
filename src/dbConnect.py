@@ -2,13 +2,20 @@ import mysql.connector
 
 class DBConnect():
 
-	def __init__( self ):
-		pass
+	Host_Name = ""
+	User_Name = ""
+	Password  = ""
+	Database_Name =""
 
-	def connectiondb(self,Host_Name,User_Name,Password,Database_Name):
-		print("inicia connectiondb")
+	def __init__( self,Host_Name,User_Name,Password,Database_Name):
+		self.Host_Name = Host_Name
+		self.User_Name = User_Name
+		self.Password  = Password
+		self.Database_Name =Database_Name
+
+	def connectiondb(self):
 		try:
-			self.connection = mysql.connector.connect(host=Host_Name,user=User_Name,password=Password,database=Database_Name)
+			self.connection = mysql.connector.connect(host=self.Host_Name,user=self.User_Name,password=self.Password,database=self.Database_Name)
 			self.cursor = self.connection.cursor()
 			return True
 		except mysql.connector.Error as e:
